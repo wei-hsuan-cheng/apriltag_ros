@@ -91,6 +91,14 @@ ros2 run apriltag_ros apriltag_node --ros-args \
     --params-file `ros2 pkg prefix apriltag_ros`/share/apriltag_ros/cfg/tags_36h11.yaml
 ```
 
+### Launch
+```sh
+ros2 launch apriltag_ros camera_36h11.launch.py \
+  play_bag:=true \
+  repeat_bag:=true \
+  use_sim_time:=true
+```
+
 ### Composable Node
 
 For more efficient intraprocess communication, a composable node is provided:
