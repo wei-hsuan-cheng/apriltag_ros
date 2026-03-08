@@ -34,8 +34,10 @@ endif()
 
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(apriltag_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(cv_bridge REQUIRED)
@@ -59,6 +61,17 @@ endif()
 if(tf2_ros_VERSION VERSION_GREATER_EQUAL 0.45)
     add_compile_definitions(tf2_ros_NODE_INTERFACE)
 endif()
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+    "msg/AprilTagDetection.msg"
+    "msg/AprilTagDetectionArray.msg"
+    DEPENDENCIES geometry_msgs std_msgs
+)
+
+rosidl_get_typesupport_target(cpp_typesupport_target
+    ${PROJECT_NAME}
+    "rosidl_typesupport_cpp"
+)
 
 
 # database of tag functions
@@ -117,8 +130,9 @@ target_link_libraries(AprilTagNode
     apriltag::apriltag
     tags
     pose_estimation
-    ${apriltag_msgs_TARGETS}
+    ${geometry_msgs_TARGETS}
     ${sensor_msgs_TARGETS}
+    "${cpp_typesupport_target}"
     cv_bridge::cv_bridge
     image_transport::image_transport
     rclcpp::rclcpp
@@ -143,6 +157,10 @@ install(DIRECTORY cfg
     DESTINATION share/${PROJECT_NAME}
 )
 
+install(DIRECTORY msg
+    DESTINATION share/${PROJECT_NAME}
+)
+
 install(DIRECTORY launch
     DESTINATION share/${PROJECT_NAME}
 )
@@ -159,5 +177,7 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+ament_export_dependencies(rosidl_default_runtime)
 
 ament_package()

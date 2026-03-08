@@ -1,0 +1,10 @@
+string family
+int32 id
+int32 hamming
+float64 decision_margin
+geometry_msgs/Point centre
+geometry_msgs/Point[4] corners
+float64[9] homography
+bool pose_valid
+string child_frame_id
+geometry_msgs/PoseStamped pose

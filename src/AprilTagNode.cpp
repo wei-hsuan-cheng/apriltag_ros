@@ -1,7 +1,7 @@
 // ros
 #include "pose_estimation.hpp"
-#include <apriltag_msgs/msg/april_tag_detection.hpp>
-#include <apriltag_msgs/msg/april_tag_detection_array.hpp>
+#include <apriltag_ros/msg/april_tag_detection.hpp>
+#include <apriltag_ros/msg/april_tag_detection_array.hpp>
 #ifdef cv_bridge_HPP
 #include <cv_bridge/cv_bridge.hpp>
 #else
@@ -84,7 +84,7 @@ private:
     std::function<void(apriltag_family_t*)> tf_destructor;
 
     const image_transport::CameraSubscriber sub_cam;
-    const rclcpp::Publisher<apriltag_msgs::msg::AprilTagDetectionArray>::SharedPtr pub_detections;
+    const rclcpp::Publisher<apriltag_ros::msg::AprilTagDetectionArray>::SharedPtr pub_detections;
     tf2_ros::TransformBroadcaster tf_broadcaster;
 
     pose_estimation_f estimate_pose = nullptr;
@@ -120,7 +120,7 @@ AprilTagNode::AprilTagNode(const rclcpp::NodeOptions& options)
                 )}
 #endif
     },
-    pub_detections(create_publisher<apriltag_msgs::msg::AprilTagDetectionArray>("detections", rclcpp::QoS(1))),
+    pub_detections(create_publisher<apriltag_ros::msg::AprilTagDetectionArray>("detections", rclcpp::QoS(1))),
     tf_broadcaster(
 #ifdef tf2_ros_NODE_INTERFACE
         tf2_ros::TransformBroadcaster::RequiredInterfaces { *this }
@@ -223,7 +223,7 @@ void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_i
     if(profile)
         timeprofile_display(td->tp);
 
-    apriltag_msgs::msg::AprilTagDetectionArray msg_detections;
+    apriltag_ros::msg::AprilTagDetectionArray msg_detections;
     msg_detections.header = msg_img->header;
 
     std::vector<geometry_msgs::msg::TransformStamped> tfs;
@@ -244,27 +244,40 @@ void AprilTagNode::onCamera(const sensor_msgs::msg::Image::ConstSharedPtr& msg_i
         if(det->hamming > max_hamming) { continue; }
 
         // detection
-        apriltag_msgs::msg::AprilTagDetection msg_detection;
+        apriltag_ros::msg::AprilTagDetection msg_detection;
         msg_detection.family = std::string(det->family->name);
         msg_detection.id = det->id;
         msg_detection.hamming = det->hamming;
         msg_detection.decision_margin = det->decision_margin;
         msg_detection.centre.x = det->c[0];
         msg_detection.centre.y = det->c[1];
-        std::memcpy(msg_detection.corners.data(), det->p, sizeof(double) * 8);
+        for(size_t j = 0; j < msg_detection.corners.size(); j++) {
+            msg_detection.corners[j].x = det->p[j][0];
+            msg_detection.corners[j].y = det->p[j][1];
+        }
         std::memcpy(msg_detection.homography.data(), det->H->data, sizeof(double) * 9);
-        msg_detections.detections.push_back(msg_detection);
+        msg_detection.pose.header = msg_img->header;
+        msg_detection.child_frame_id =
+            tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
 
         // 3D orientation and position
         if(estimate_pose != nullptr && calibrated) {
             geometry_msgs::msg::TransformStamped tf;
             tf.header = msg_img->header;
             // set child frame name by generic tag name or configured tag name
-            tf.child_frame_id = tag_frames.count(det->id) ? tag_frames.at(det->id) : std::string(det->family->name) + ":" + std::to_string(det->id);
+            tf.child_frame_id = msg_detection.child_frame_id;
             const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
             tf.transform = estimate_pose(det, intrinsics, size);
+            msg_detection.pose_valid = true;
+            msg_detection.pose.pose.position.x = tf.transform.translation.x;
+            msg_detection.pose.pose.position.y = tf.transform.translation.y;
+            msg_detection.pose.pose.position.z = tf.transform.translation.z;
+            msg_detection.pose.pose.orientation = tf.transform.rotation;
+
             tfs.push_back(tf);
         }
+
+        msg_detections.detections.push_back(msg_detection);
     }
 
     pub_detections->publish(msg_detections);

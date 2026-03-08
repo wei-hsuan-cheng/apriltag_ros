@@ -14,17 +14,17 @@ The node subscribes via a `image_transport::CameraSubscriber` to rectified image
 
 ### Publisher:
 - `/tf` (type: `tf2_msgs/msg/TFMessage`)
-- `detections` (type: `apriltag_msgs/msg/AprilTagDetectionArray`)
+- `detections` (type: `apriltag_ros/msg/AprilTagDetectionArray`)
 
 The camera intrinsics `P` in `CameraInfo` are used to compute the marker tag pose `T` from the homography `H`. The image and the camera intrinsics need to have the same timestamp.
 
-The tag poses are published on the standard TF topic `/tf` with the header set to the image header and `child_frame_id` set to either `tag<family>:<id>` (e.g. "tag36h11:0") or the frame name selected via configuration file. Additional information about detected tags is published as `AprilTagDetectionArray` message, which contains the original homography  matrix, the `hamming` distance and the `decision_margin` of the detection.
+The tag poses are published on the standard TF topic `/tf` with the header set to the image header and `child_frame_id` set to either `tag<family>:<id>` (e.g. "tag36h11:0") or the frame name selected via configuration file. Additional information about detected tags is published on `detections` as `apriltag_ros/msg/AprilTagDetectionArray`. Each detection includes the original homography matrix, the `hamming` distance, the `decision_margin`, the resolved `child_frame_id`, and a `geometry_msgs/msg/PoseStamped` pose with `pose_valid` indicating whether pose estimation succeeded.
 
 ## Build
 
 ```bash
 # Clone the related repositories
-git clone https://github.com/christianrauch/apriltag_ros.git
+git clone https://github.com/wei-hsuan-cheng/apriltag_ros.git
 
 # rosdep install
 rosdep update
@@ -32,8 +32,13 @@ rosdep install --from-paths src --ignore-src -r -y
 
 # Build and install
 cd ~/ros2_ws
+export CMAKE_BUILD_PARALLEL_LEVEL=2
+export MAKEFLAGS=-j2
+export NINJAFLAGS=-j2
 colcon build --symlink-install \
   --packages-select apriltag_ros \
+  --executor sequential --parallel-workers 1 \
+  --cmake-args -DBUILD_TESTING=OFF \
   && . install/setup.bash
 ```
 
@@ -95,7 +100,7 @@ ros2 run apriltag_ros apriltag_node --ros-args \
 ```sh
 ros2 launch apriltag_ros camera_36h11.launch.py \
   play_bag:=true \
-  repeat_bag:=true \
+  bag_loop:=true \
   use_sim_time:=true
 ```
 
