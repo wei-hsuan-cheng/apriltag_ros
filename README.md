@@ -100,7 +100,7 @@ ros2 run apriltag_ros apriltag_node --ros-args \
 ```sh
 ros2 launch apriltag_ros camera_36h11.launch.py \
   play_bag:=true \
-  bag_loop:=true \
+  repeat_bag:=true \
   use_sim_time:=true
 ```
 
