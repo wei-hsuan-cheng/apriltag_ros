@@ -20,6 +20,6 @@
 
         # optional list of tags
         tag:
-            ids: [12, 13]            # tag ID
-            frames: [door_panel_1, door_panel_2]  # optional frame name
-            sizes: [0.2, 0.2]   # optional tag-specific edge size
+            ids: [12]            # tag ID
+            frames: [door_panel]  # optional frame name
+            sizes: [0.1535]   # optional tag-specific edge size
